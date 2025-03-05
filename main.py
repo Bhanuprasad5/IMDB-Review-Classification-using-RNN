@@ -5,12 +5,23 @@ from tensorflow.keras.preprocessing import sequence
 from tensorflow.keras.models import load_model
 import streamlit as st
 
+# Custom objects dictionary to handle potential custom layers or configurations
+def custom_objects():
+    return {
+        'SimpleRNN': tf.keras.layers.SimpleRNN,
+        'GlorotUniform': tf.keras.initializers.GlorotUniform
+    }
+
 # Load the IMDB dataset word index
 word_index = imdb.get_word_index()
 reverse_word_index = {value: key for key, value in word_index.items()}
 
-# Load the pre-trained model correctly
-model = load_model('simple_rnn_imdb.h5')
+# Load the model with custom objects and explicit handling
+try:
+    model = load_model('simple_rnn_imdb.h5', custom_objects=custom_objects())
+except Exception as load_error:
+    st.error(f"Error loading model: {load_error}")
+    model = None
 
 # Function to decode reviews
 def decode_review(encoded_review):
@@ -31,7 +42,9 @@ st.write('Enter a movie review to classify it as positive or negative.')
 user_input = st.text_area('Movie Review')
 
 if st.button('Classify'):
-    if user_input:
+    if model is None:
+        st.error("Model could not be loaded. Please check the model file.")
+    elif user_input:
         try:
             preprocessed_input = preprocess_text(user_input)
             # Make prediction
@@ -42,6 +55,6 @@ if st.button('Classify'):
             st.write(f'Sentiment: {sentiment}')
             st.write(f'Prediction Score: {prediction[0][0]:.4f}')
         except Exception as e:
-            st.error(f"An error occurred: {e}")
+            st.error(f"An error occurred during prediction: {e}")
     else:
         st.warning('Please enter a movie review.')
